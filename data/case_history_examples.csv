@@ -1,0 +1,16 @@
+case_id,scenario,domain,case_description,attempt,result,reason_or_next_step
+CASETEST001,S1_SUCCESS,REFUND,"₹1,500 cancelled order; direct refund succeeds",Attempt 1,SUCCESS,Close after validation
+CASETEST002,S2_SUCCESS,REFUND,"₹1,500 refund; direct refund fails, reference recovery succeeds",Attempt 1,FAILED,Gateway reference unavailable
+CASETEST002,S2_SUCCESS,REFUND,"₹1,500 refund; reference recovery succeeds",Attempt 2,SUCCESS,Close after validation
+CASETEST003,S3_SUCCESS,REFUND,"₹1,500 refund; first two approaches fail, alternate policy path succeeds",Attempt 1,FAILED,Gateway rejected direct refund
+CASETEST003,S3_SUCCESS,REFUND,"₹1,500 refund; reference recovery fails",Attempt 2,FAILED,Gateway reference unavailable
+CASETEST003,S3_SUCCESS,REFUND,"₹1,500 refund; returnless-resolution path succeeds",Attempt 3,SUCCESS,Close after validation
+CASETEST004,ALL_FAIL,REFUND,"₹1,500 refund; all three distinct approaches fail",Attempt 1,FAILED,Gateway rejected refund
+CASETEST004,ALL_FAIL,REFUND,"₹1,500 refund; reference recovery fails",Attempt 2,FAILED,Reference service unavailable
+CASETEST004,ALL_FAIL,REFUND,"₹1,500 refund; alternate eligibility path fails",Attempt 3,FAILED,Transaction state unresolved; unsafe to refund
+CASETEST005,HUMAN_AMOUNT,REFUND,"₹2,000 refund requires human approval",N/A,HUMAN_REQUIRED,"Amount >= ₹2,000"
+CASETEST006,HUMAN_AMOUNT,REFUND,"₹5,000 refund requires human approval",N/A,HUMAN_REQUIRED,"Amount >= ₹2,000"
+CASETEST007,DELIVERY_DISPUTE,DELIVERY,Order marked delivered but customer disputes receipt,Investigation,ESCALATE_OR_RESOLVE,Collect tracking and delivery proof
+CASETEST008,NON_RETURNABLE_DAMAGED,RETURN,Non-returnable category but item reported damaged,Investigation,CHECK_EXCEPTION,Check applicable damaged/defective exception
+CASETEST009,RETURNLESS,RETURN,Eligible product may qualify for returnless resolution,Investigation,CHECK_POLICY,Do not assume; check product rule
+CASETEST010,A_TO_Z,DELIVERY,Marketplace seller issue requires evidence for A-to-z-style review,Investigation,ESCALATE,Collect delivery/return evidence

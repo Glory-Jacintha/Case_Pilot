@@ -1,0 +1,9 @@
+domain,strategy_id,description,tool_sequence,action_type
+REFUND,DIRECT_REFUND,Verify payment and directly create the eligible refund.,create_refund,FINANCIAL_ACTION
+REFUND,RECOVER_TRANSACTION_REFERENCE,"Recover/verify the original gateway reference, then retry the refund.",get_payment_details -> create_refund,FINANCIAL_ACTION
+REFUND,RETURNLESS_REFUND_CHECK,Check product/category eligibility for a returnless resolution before refunding.,check_return_eligibility -> create_refund,FINANCIAL_ACTION
+RETURN,STANDARD_RETURN,Check return eligibility and create a return request.,check_return_eligibility -> create_return_request,RETURN_ACTION
+RETURN,RETURNLESS_RESOLUTION,Check whether a returnless resolution is permitted for the product/case.,check_returnless_eligibility -> create_refund_or_replacement,RETURN_ACTION
+DELIVERY,TRACKING_RECHECK,Recheck tracking and latest carrier status.,get_delivery_status -> get_tracking_info,INVESTIGATION
+DELIVERY,DELIVERY_PROOF_REVIEW,Retrieve and review delivery proof for a disputed delivery.,get_delivery_status -> get_delivery_proof,INVESTIGATION
+PAYMENT,PAYMENT_RECONCILIATION,Reconcile order amount against payment transaction.,get_order_details -> get_payment_details,INVESTIGATION

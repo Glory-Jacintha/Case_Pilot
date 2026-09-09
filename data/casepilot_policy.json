@@ -1,0 +1,16 @@
+{
+  "autonomous_transaction_limit_inr": 2000,
+  "human_approval_rule": "Any financial transaction/refund amount >= INR 2000 requires human approval via LangGraph interrupt.",
+  "ai_resolution_rule": "For amounts below INR 2000, AI may attempt an eligible action if all applicable Amazon-policy checks and transaction checks pass.",
+  "max_distinct_strategies": 3,
+  "strategy_rule": "Each attempt must use a different, issue-appropriate approach that has not already been tried.",
+  "success_rule": "A strategy is successful only after the intended business outcome is validated using system evidence. Stop immediately after validated success.",
+  "failure_rule": "Record the exact tool/system/business reason for failure before selecting another strategy.",
+  "escalation_rule": "After three distinct unsuccessful strategies, interrupt and provide the human with evidence, attempts, exact failure reasons, and an AI recommendation.",
+  "safety_rules": [
+    "Never invent transaction state.",
+    "Never claim a refund succeeded without validation.",
+    "Never repeat a failed strategy unless new evidence materially changes the situation.",
+    "When transaction data conflicts or is uncertain, escalate."
+  ]
+}

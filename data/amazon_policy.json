@@ -1,0 +1,53 @@
+{
+  "title": "Amazon policy knowledge base for CasePilot",
+  "source_scope": "Public Amazon/Seller Central guidance; not Amazon internal policy.",
+  "returns": {
+    "general_guidance": "Most items may be returned within 30 days, but the applicable return period can vary by product/category.",
+    "rule": "Always check the specific product/category return eligibility and applicable return window."
+  },
+  "non_returnable": {
+    "examples": [
+      "Perishables",
+      "Certain health/safety-sensitive products",
+      "Products with shipping restrictions",
+      "Certain customized products"
+    ],
+    "exception_guidance": "Some non-returnable items may still qualify for refund/replacement when damaged, defective, or materially different, subject to applicable policy."
+  },
+  "returnless_resolution": {
+    "guidance": "A refund or replacement without return may be available for qualifying cases/products.",
+    "rule": "Check the specific SKU/product/case eligibility; do not assume returnless eligibility."
+  },
+  "refunds": {
+    "seller_fulfilled_guidance": "Amazon Seller Central guidance states seller-fulfilled refunds should be processed within two business days after receipt of a returned item.",
+    "verification": [
+      "Verify order",
+      "Verify successful payment",
+      "Verify return/refund eligibility",
+      "Check whether a refund already exists",
+      "Check return receipt where applicable"
+    ]
+  },
+  "delivery_claims": {
+    "evidence": [
+      "Tracking number",
+      "Proof of delivery",
+      "Delivery address",
+      "Signature confirmation",
+      "Carrier information",
+      "Dispatch information"
+    ]
+  },
+  "a_to_z_guarantee": {
+    "guidance": "For qualifying Marketplace Seller cases, A-to-z Guarantee processes may apply; check applicable eligibility and gather delivery/return evidence.",
+    "checks": [
+      "Marketplace seller involvement",
+      "Applicable delivery-date window",
+      "Whether a payment-provider refund/chargeback already occurred",
+      "Available delivery/return evidence"
+    ]
+  },
+  "return_request_response": {
+    "guidance": "Amazon Seller Central guidance states sellers should respond to return requests within 48 hours."
+  }
+}

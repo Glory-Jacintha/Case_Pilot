@@ -1,0 +1,13 @@
+file,purpose,important_fields
+customers.csv,Customer master,"customer_id, identity/location basics"
+orders.csv,Order system,"order status, product, amount, seller"
+payments.csv,Payment system,"transaction, amount, payment status, gateway reference"
+deliveries.csv,Delivery system,"tracking, status, proof of delivery"
+returns.csv,Return system,return request/status/reason
+refunds.csv,Refund system,refund amount/status/reference
+products.csv,Product/policy metadata,"return window, returnability, returnless eligibility"
+support_cases.csv,Historical support cases,"customer complaint, domain, issue type, linked order"
+resolution_strategies.csv,CasePilot strategy library,distinct issue-appropriate strategies
+case_history_examples.csv,Evaluation scenarios,success/failure/escalation examples
+amazon_policy.json,Policy knowledge,public Amazon guidance relevant to CasePilot
+casepilot_policy.json,System authorization rules,"₹2,000 threshold, 3 attempts, validation/escalation"
