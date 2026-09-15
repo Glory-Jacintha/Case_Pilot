@@ -38,12 +38,17 @@ app.add_middleware(
 # ---------------------------------------------------------
 
 class ChatRequest(BaseModel):
+    session_id: str = Field(
+        ...,
+        min_length=1,
+        description="Unique conversation session ID",
+    )
+
     customer_message: str = Field(
         ...,
         min_length=1,
         description="Message sent by the customer",
     )
-
 
 class ChatResponse(BaseModel):
     message: str
@@ -74,8 +79,20 @@ def chat(request: ChatRequest):
 
     result = casepilot_graph.invoke(
         {
+            "session_id": request.session_id,
             "customer_message": request.customer_message,
-        }
+            "conversation_history": [
+                {
+                    "role": "user",
+                    "content": request.customer_message,
+                }
+            ],
+        },
+        config={
+            "configurable": {
+                "thread_id": request.session_id,
+            }
+        },
     )
 
     return ChatResponse(
@@ -83,8 +100,18 @@ def chat(request: ChatRequest):
             "investigation",
             "I couldn't investigate the case.",
         ),
-        transaction_amount=result.get("transaction_amount"),
-        authorization=result.get("authorization"),
-        requires_human=result.get("requires_human", False),
-        status=result.get("status", "UNKNOWN"),
+        transaction_amount=result.get(
+            "transaction_amount"
+        ),
+        authorization=result.get(
+            "authorization"
+        ),
+        requires_human=result.get(
+            "requires_human",
+            False,
+        ),
+        status=result.get(
+            "status",
+            "UNKNOWN",
+        ),
     )

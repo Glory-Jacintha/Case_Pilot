@@ -1,26 +1,56 @@
 from __future__ import annotations
 
-from typing import Literal
+import operator
+
+from typing import Annotated, Literal
 from typing_extensions import TypedDict
 
 
 class CaseState(TypedDict, total=False):
-    # Customer input
+    # -------------------------------------------------
+    # Conversation
+    # -------------------------------------------------
+
+    session_id: str
+
     customer_message: str
 
-    # Case information
-    case_id: str
+    conversation_history: Annotated[
+        list[dict[str, str]],
+        operator.add,
+    ]
+
+    # -------------------------------------------------
+    # Customer / case information
+    # -------------------------------------------------
+
+    customer_id: str
     order_id: str
+
+    case_id: str
     domain: str
     issue_type: str
 
+    # -------------------------------------------------
     # Investigation
+    # -------------------------------------------------
+
     investigation: str
     transaction_amount: float
 
+    # -------------------------------------------------
     # Authorization
-    authorization: Literal["AI_ALLOWED", "HUMAN_REQUIRED"]
+    # -------------------------------------------------
+
+    authorization: Literal[
+        "AI_ALLOWED",
+        "HUMAN_REQUIRED",
+    ]
+
     requires_human: bool
 
-    # Current status
+    # -------------------------------------------------
+    # Status
+    # -------------------------------------------------
+
     status: str
