@@ -47,7 +47,7 @@ function App() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const sendMessage = (messageText?: string) => {
+  const sendMessage = async (messageText?: string) => {
     const text = (messageText ?? input).trim();
 
     if (!text || isTyping) return;
@@ -62,41 +62,44 @@ function App() {
     setInput("");
     setIsTyping(true);
 
-    // Temporary frontend-only response.
-    // This will later be replaced by the FastAPI call.
-    setTimeout(() => {
-      let response =
-        "Thanks for explaining that. I can help you investigate this. Could you provide your order ID?";
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customer_message: text,
+        }),
+      });
 
-      if (/ORD\d+/i.test(text)) {
-        response =
-          "Thanks! I found the order reference you provided. I'm ready to investigate the details and check what happened.";
-      } else if (/refund/i.test(text)) {
-        response =
-          "I can help you with your refund. Please provide your order ID so I can check the refund status.";
-      } else if (/delivery|delivered|shipping|shipment/i.test(text)) {
-        response =
-          "I can check the delivery details for you. Please provide your order ID.";
-      } else if (/payment|charged|debit|credit/i.test(text)) {
-        response =
-          "I can investigate the payment issue. Please provide your order ID or payment reference.";
-      } else if (/return/i.test(text)) {
-        response =
-          "I can help you with the return. Please provide your order ID so I can check the return eligibility and available options.";
-      } else if (/order/i.test(text)) {
-        response =
-          "I can help investigate your order. Please provide your order ID so I can look into it.";
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
       }
+
+      const data = await response.json();
 
       const botMessage: Message = {
         id: Date.now() + 1,
         sender: "bot",
-        text: response,
+        text: data.message,
       };
 
       setMessages((previous) => [...previous, botMessage]);
+    } catch (error) {
+      console.error("CasePilot API error:", error);
+
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        sender: "bot",
+        text:
+          "I'm having trouble connecting to CasePilot right now. Please try again in a moment.",
+      };
+
+      setMessages((previous) => [...previous, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 900);
+    }
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {

@@ -3,3 +3,5 @@ langgraph
 langchain-google-genai
 python-dotenv
 pytest
+fastapi
+uvicorn[standard]
