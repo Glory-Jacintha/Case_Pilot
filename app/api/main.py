@@ -96,22 +96,16 @@ def chat(request: ChatRequest):
     )
 
     return ChatResponse(
-        message=result.get(
-            "investigation",
-            "I couldn't investigate the case.",
-        ),
-        transaction_amount=result.get(
-            "transaction_amount"
-        ),
-        authorization=result.get(
-            "authorization"
-        ),
-        requires_human=result.get(
-            "requires_human",
-            False,
-        ),
-        status=result.get(
-            "status",
-            "UNKNOWN",
-        ),
-    )
+    message=result.get(
+        "customer_response",
+        "I'm checking your request.",
+    ),
+    requires_human=result.get(
+        "requires_human",
+        False,
+    ),
+    status=result.get(
+        "status",
+        "UNKNOWN",
+    ),
+)

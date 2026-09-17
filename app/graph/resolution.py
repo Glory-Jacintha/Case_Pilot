@@ -293,20 +293,133 @@ def get_strategies(
                 strategy_returnless_resolution,
             ),
         ]
+    # ---------------------------------------------------------
+    # These will be implemented next.
+    # Do NOT execute refund strategies for other domains.
+    # ---------------------------------------------------------
+    return []
 
-    # We will add dedicated delivery/payment/return
-    # strategy implementations next.
-    return [
-        (
-            "DIRECT_REFUND",
-            strategy_direct_refund,
-        ),
-        (
-            "TRANSACTION_RECONCILIATION",
-            strategy_recover_transaction,
-        ),
-        (
-            "RETURNLESS_ELIGIBILITY",
-            strategy_returnless_resolution,
-        ),
-    ]
+def resolution_controller(state) -> dict[str, Any]:
+    """
+    Execute the next unused resolution strategy.
+
+    Maximum of MAX_STRATEGIES distinct strategies are allowed.
+    """
+
+    issue_type = state.get("issue_type", "")
+
+    attempted = list(
+        state.get("attempted_strategies", [])
+    )
+
+    attempts = list(
+        state.get("resolution_attempts", [])
+    )
+
+    strategies = get_strategies(issue_type)
+
+    # ---------------------------------------------------------
+    # Find the next unused strategy
+    # ---------------------------------------------------------
+
+    next_strategy = None
+    strategy_function = None
+
+    for strategy_name, function in strategies:
+
+        if strategy_name not in attempted:
+
+            next_strategy = strategy_name
+            strategy_function = function
+            break
+
+    # ---------------------------------------------------------
+    # No strategies remaining
+    # ---------------------------------------------------------
+
+    if next_strategy is None:
+
+        return {
+            "resolution_success": False,
+            "resolution_failure_reason": (
+                "All available resolution strategies "
+                "have already been attempted."
+            ),
+            "status": "HUMAN_ESCALATION",
+        }
+
+    # ---------------------------------------------------------
+    # Execute strategy
+    # ---------------------------------------------------------
+
+    try:
+
+        result = strategy_function(state)
+
+    except Exception as exc:
+
+        result = {
+            "success": False,
+            "error_code": "STRATEGY_EXECUTION_ERROR",
+            "message": str(exc),
+        }
+
+    # ---------------------------------------------------------
+    # Record attempt
+    # ---------------------------------------------------------
+
+    new_attempts, new_attempted = _record_attempt(
+        state=state,
+        strategy=next_strategy,
+        action=next_strategy,
+        result=result,
+    )
+
+    success = bool(
+        result.get("success", False)
+    )
+
+    updates = {
+        "current_strategy": next_strategy,
+        "resolution_attempts": new_attempts,
+        "attempted_strategies": new_attempted,
+        "resolution_result": result,
+    }
+
+    # ---------------------------------------------------------
+    # Strategy itself failed
+    # ---------------------------------------------------------
+
+    if not success:
+
+        updates.update(
+            {
+                "resolution_success": False,
+                "resolution_failure_reason": (
+                    result.get(
+                        "message",
+                        "Resolution strategy failed.",
+                    )
+                ),
+                "status": "RESOLUTION_STRATEGY_FAILED",
+            }
+        )
+
+        return updates
+
+    # ---------------------------------------------------------
+    # Strategy succeeded technically.
+    #
+    # IMPORTANT:
+    # We still validate the actual business outcome.
+    # ---------------------------------------------------------
+
+    updates.update(
+        {
+            "resolution_success": False,
+            "resolution_failure_reason": "",
+            "status": "RESOLUTION_PENDING_VALIDATION",
+        }
+    )
+
+    return updates
