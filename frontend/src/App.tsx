@@ -198,6 +198,58 @@ function App() {
           New Chat
         </button>
 
+        <div className="capabilities-section">
+
+          <div className="capabilities-title">
+            What I can help with
+          </div>
+
+          <div className="capabilities-list">
+
+            <div className="capability-item">
+              <span className="capability-icon">📦</span>
+              <span>Orders</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">💳</span>
+              <span>Payments</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">🚚</span>
+              <span>Deliveries</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">↩</span>
+              <span>Returns</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">💰</span>
+              <span>Refunds</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">✕</span>
+              <span>Cancellations</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">🔎</span>
+              <span>Product queries</span>
+            </div>
+
+          </div>
+
+          <div className="protection-note">
+            Your information is protected. Only the information
+            needed to investigate your case is used.
+          </div>
+
+        </div>
+
         <div className="history-section">
 
           <div className="history-title">
@@ -211,9 +263,9 @@ function App() {
                 <button
                   key={conversation.id}
                   className={`conversation-item ${conversation.id ===
-                      activeConversationId
-                      ? "active"
-                      : ""
+                    activeConversationId
+                    ? "active"
+                    : ""
                     }`}
                   onClick={() =>
                     setActiveConversationId(

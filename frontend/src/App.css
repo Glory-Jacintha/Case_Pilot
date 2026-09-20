@@ -12,8 +12,8 @@
     "Segoe UI",
     sans-serif;
 
-  color: #172033;
-  background: #f6f7fb;
+  color: #e8f5f3;
+  background: #031918;
 }
 
 body {
@@ -40,7 +40,7 @@ button {
   height: 100vh;
   width: 100%;
   overflow: hidden;
-  background: #f7f8fc;
+  background: #031918;
 }
 
 /* =========================================================
@@ -54,8 +54,8 @@ button {
   display: flex;
   flex-direction: column;
 
-  background: #ffffff;
-  border-right: 1px solid #e5e7ef;
+  background: #061f1d;
+  border-right: 1px solid #143936;
 }
 
 .sidebar-header {
@@ -78,7 +78,7 @@ button {
 
   border-radius: 12px;
 
-  background: #172033;
+  background: #17233a;
   color: #ffffff;
 
   font-size: 13px;
@@ -89,13 +89,13 @@ button {
 .brand-name {
   font-size: 17px;
   font-weight: 700;
-  color: #172033;
+  color: #f0fffc;
 }
 
 .brand-subtitle {
   margin-top: 2px;
   font-size: 12px;
-  color: #7a8191;
+  color: #7fa9a5;
 }
 
 /* =========================================================
@@ -103,15 +103,15 @@ button {
    ========================================================= */
 
 .new-chat-button {
-  margin: 4px 16px 22px;
+  margin: 4px 16px 18px;
 
   height: 44px;
 
-  border: 1px solid #dfe3ec;
+  border: 1px solid #1c4945;
   border-radius: 10px;
 
-  background: #ffffff;
-  color: #172033;
+  background: #092a27;
+  color: #dff8f4;
 
   display: flex;
   align-items: center;
@@ -127,14 +127,85 @@ button {
 }
 
 .new-chat-button:hover {
-  background: #f5f6fa;
-  border-color: #cfd4df;
+  background: #0c3632;
+  border-color: #28615c;
 }
 
 .plus-icon {
   font-size: 20px;
   line-height: 1;
   font-weight: 400;
+  color: #70cfc2;
+}
+
+/* =========================================================
+   SIDEBAR CAPABILITIES
+   ========================================================= */
+
+.capabilities-section {
+  margin: 0 12px 18px;
+  padding: 14px;
+
+  border: 1px solid #143e3a;
+  border-radius: 12px;
+
+  background: #082522;
+}
+
+.capabilities-title {
+  margin-bottom: 11px;
+
+  color: #e4f8f5;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.capabilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.capability-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  padding: 7px 8px;
+
+  border-radius: 7px;
+
+  background: #092a27;
+
+  color: #8fbab5;
+
+  font-size: 11px;
+}
+
+.capability-icon {
+  width: 18px;
+  flex-shrink: 0;
+
+  text-align: center;
+}
+
+.capability-item span:last-child {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.protection-note {
+  margin-top: 11px;
+  padding-top: 10px;
+
+  border-top: 1px solid #143e3a;
+
+  color: #6f9b96;
+
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 /* =========================================================
@@ -150,7 +221,7 @@ button {
 .history-title {
   padding: 0 8px 10px;
 
-  color: #969cac;
+  color: #658b87;
 
   font-size: 10px;
   font-weight: 700;
@@ -177,7 +248,7 @@ button {
   border-radius: 9px;
 
   background: transparent;
-  color: #5c6473;
+  color: #83a8a4;
 
   text-align: left;
 
@@ -185,16 +256,16 @@ button {
 }
 
 .conversation-item:hover {
-  background: #f4f5f9;
+  background: #0b2d2a;
 }
 
 .conversation-item.active {
-  background: #eef0f6;
-  color: #172033;
+  background: #103733;
+  color: #e5faf7;
 }
 
 .conversation-icon {
-  color: #9aa1af;
+  color: #64938e;
   font-size: 14px;
 }
 
@@ -214,13 +285,13 @@ button {
 .sidebar-footer {
   padding: 17px 20px;
 
-  border-top: 1px solid #e9ebf1;
+  border-top: 1px solid #143936;
 
   display: flex;
   align-items: center;
   gap: 8px;
 
-  color: #7c8493;
+  color: #719a95;
   font-size: 12px;
 }
 
@@ -230,7 +301,7 @@ button {
   height: 7px;
 
   border-radius: 50%;
-  background: #35a66f;
+  background: #4fc3a8;
 
   display: inline-block;
 }
@@ -246,7 +317,7 @@ button {
   display: flex;
   flex-direction: column;
 
-  background: #f8f9fc;
+  background: #071d1c;
 }
 
 /* =========================================================
@@ -262,14 +333,14 @@ button {
   display: flex;
   align-items: center;
 
-  background: #ffffff;
-  border-bottom: 1px solid #e7e9ef;
+  background: #092320;
+  border-bottom: 1px solid #143936;
 }
 
 .chat-header-title {
   font-size: 16px;
   font-weight: 650;
-  color: #172033;
+  color: #ecfffc;
 }
 
 .chat-header-status {
@@ -280,7 +351,7 @@ button {
   gap: 6px;
 
   font-size: 11px;
-  color: #7b8392;
+  color: #719b96;
 }
 
 /* =========================================================
@@ -325,13 +396,13 @@ button {
 }
 
 .assistant-avatar {
-  background: #172033;
+  background: #17233a;
   color: #ffffff;
 }
 
 .user-avatar {
-  background: #e5e8ef;
-  color: #555d6d;
+  background: #173c38;
+  color: #a9d9d2;
 }
 
 .message-bubble {
@@ -348,16 +419,16 @@ button {
 }
 
 .message-bubble.assistant {
-  background: #ffffff;
-  border: 1px solid #e5e8ef;
+  background: #0b2926;
+  border: 1px solid #19413d;
 
-  color: #303746;
+  color: #d4ebe7;
 
   border-top-left-radius: 4px;
 }
 
 .message-bubble.user {
-  background: #172033;
+  background: #17233a;
   color: #ffffff;
 
   border-top-right-radius: 4px;
@@ -381,7 +452,7 @@ button {
 
   border-radius: 50%;
 
-  background: #8b93a2;
+  background: #67b8ad;
 
   animation: typing 1.2s infinite ease-in-out;
 }
@@ -426,11 +497,11 @@ button {
 .suggestions button {
   padding: 9px 13px;
 
-  border: 1px solid #dfe3eb;
+  border: 1px solid #1d4844;
   border-radius: 9px;
 
-  background: #ffffff;
-  color: #5b6372;
+  background: #0b2926;
+  color: #8fbab5;
 
   font-size: 12px;
 
@@ -440,8 +511,8 @@ button {
 }
 
 .suggestions button:hover {
-  background: #f3f4f8;
-  border-color: #ccd1dc;
+  background: #103733;
+  border-color: #2a615b;
 }
 
 /* =========================================================
@@ -453,7 +524,7 @@ button {
 
   padding: 12px 24px 18px;
 
-  background: #f8f9fc;
+  background: #071d1c;
 }
 
 .input-wrapper {
@@ -468,17 +539,17 @@ button {
 
   padding: 8px 8px 8px 16px;
 
-  background: #ffffff;
+  background: #0b2926;
 
-  border: 1px solid #dfe3eb;
+  border: 1px solid #1b4541;
   border-radius: 15px;
 
   box-shadow:
-    0 2px 7px rgba(20, 30, 50, 0.03);
+    0 2px 7px rgba(0, 0, 0, 0.18);
 }
 
 .input-wrapper:focus-within {
-  border-color: #b9bfcc;
+  border-color: #2e7169;
 }
 
 .input-wrapper textarea {
@@ -496,14 +567,14 @@ button {
 
   background: transparent;
 
-  color: #172033;
+  color: #e4f8f5;
 
   font-size: 14px;
   line-height: 1.5;
 }
 
 .input-wrapper textarea::placeholder {
-  color: #a0a6b2;
+  color: #648c87;
 }
 
 .send-button {
@@ -514,7 +585,7 @@ button {
   border: 0;
   border-radius: 10px;
 
-  background: #172033;
+  background: #17233a;
   color: #ffffff;
 
   font-size: 20px;
@@ -540,7 +611,7 @@ button {
 
   text-align: center;
 
-  color: #a0a6b1;
+  color: #5f8581;
 
   font-size: 10px;
 }
@@ -591,7 +662,8 @@ button {
   .brand-subtitle,
   .new-chat-button,
   .history-section,
-  .sidebar-footer {
+  .sidebar-footer,
+  .capabilities-section {
     display: none;
   }
 
