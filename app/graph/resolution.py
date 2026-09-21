@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.tools.action_tools import create_refund
+from app.graph.strategy_executors import execute_strategy
+from app.graph.strategy_registry import get_strategies_for_domain
 
 
 MAX_STRATEGIES = 3
@@ -36,7 +37,10 @@ def _record_attempt(
         ),
         "reason": result.get(
             "message",
-            "",
+            result.get(
+                "error",
+                "",
+            ),
         ),
         "result": result,
     }
@@ -49,296 +53,99 @@ def _record_attempt(
     return attempts, attempted
 
 
-def strategy_direct_refund(
-    state,
-) -> dict[str, Any]:
-    """
-    Strategy 1:
-    Attempt a standard direct refund.
-    """
-
-    order_id = state.get("order_id")
-    amount = state.get("transaction_amount")
-
-    if not order_id:
-        return {
-            "success": False,
-            "error_code": "ORDER_ID_MISSING",
-            "message": "Order ID is required.",
-        }
-
-    if amount is None:
-        return {
-            "success": False,
-            "error_code": "AMOUNT_MISSING",
-            "message": "Transaction amount is required.",
-        }
-
-    return create_refund.invoke(
-        {
-            "order_id": order_id,
-            "amount": float(amount),
-            "reason": "CUSTOMER_REFUND_REQUEST",
-        }
-    )
-
-
-def strategy_recover_transaction(
-    state,
-) -> dict[str, Any]:
-    """
-    Strategy 2:
-    Verify the transaction/payment relationship
-    before retrying the refund operation.
-    """
-
-    order_id = state.get("order_id")
-
-    if not order_id:
-        return {
-            "success": False,
-            "error_code": "ORDER_ID_MISSING",
-            "message": "Order ID is required.",
-        }
-
-    from app.tools.data_store import (
-        orders,
-        payments,
-        refunds,
-    )
-
-    order = next(
-        (
-            row
-            for row in orders()
-            if row["OrderID"] == order_id
-        ),
-        None,
-    )
-
-    payment = next(
-        (
-            row
-            for row in payments()
-            if row["OrderID"] == order_id
-        ),
-        None,
-    )
-
-    refund = next(
-        (
-            row
-            for row in refunds()
-            if row["OrderID"] == order_id
-        ),
-        None,
-    )
-
-    if not order:
-        return {
-            "success": False,
-            "error_code": "ORDER_NOT_FOUND",
-            "message": (
-                f"Order {order_id} could not be found."
-            ),
-        }
-
-    if not payment:
-        return {
-            "success": False,
-            "error_code": "PAYMENT_NOT_FOUND",
-            "message": (
-                "No payment record was found."
-            ),
-        }
-
-    if payment.get("PaymentStatus") != "SUCCESS":
-        return {
-            "success": False,
-            "error_code": "PAYMENT_NOT_SUCCESSFUL",
-            "message": (
-                "The original payment was not successful."
-            ),
-        }
-
-    if not refund:
-        return {
-            "success": False,
-            "error_code": "REFUND_RECORD_NOT_FOUND",
-            "message": (
-                "No existing refund record was found."
-            ),
-        }
-
-    return {
-        "success": True,
-        "error_code": "",
-        "message": (
-            "Payment and refund records were "
-            "successfully reconciled."
-        ),
-        "operation": "TRANSACTION_RECONCILIATION",
-        "order_id": order_id,
-        "transaction_id": payment.get(
-            "TransactionID"
-        ),
-        "refund_id": refund.get(
-            "RefundID"
-        ),
-        "refund_status": refund.get(
-            "RefundStatus"
-        ),
-    }
-
-
-def strategy_returnless_resolution(
-    state,
-) -> dict[str, Any]:
-    """
-    Strategy 3:
-    Check whether a returnless resolution is
-    applicable.
-
-    This does NOT automatically issue a refund.
-    """
-
-    order_id = state.get("order_id")
-
-    if not order_id:
-        return {
-            "success": False,
-            "error_code": "ORDER_ID_MISSING",
-            "message": "Order ID is required.",
-        }
-
-    from app.tools.data_store import (
-        orders,
-        products,
-    )
-
-    order = next(
-        (
-            row
-            for row in orders()
-            if row["OrderID"] == order_id
-        ),
-        None,
-    )
-
-    if not order:
-        return {
-            "success": False,
-            "error_code": "ORDER_NOT_FOUND",
-            "message": (
-                f"Order {order_id} could not be found."
-            ),
-        }
-
-    product_id = order.get("ProductID")
-
-    product = next(
-        (
-            row
-            for row in products()
-            if row["ProductID"] == product_id
-        ),
-        None,
-    )
-
-    if not product:
-        return {
-            "success": False,
-            "error_code": "PRODUCT_NOT_FOUND",
-            "message": (
-                "Product information could not be found."
-            ),
-        }
-
-    # We deliberately do not automatically approve
-    # a returnless refund.
-    return {
-        "success": False,
-        "error_code": "RETURNLESS_NOT_AUTOMATIC",
-        "message": (
-            "Returnless resolution requires "
-            "additional eligibility checks."
-        ),
-        "operation": "RETURNLESS_ELIGIBILITY_CHECK",
-        "order_id": order_id,
-        "product_id": product_id,
-    }
-
-
 def get_strategies(
-    issue_type: str,
+    domain: str,
 ):
     """
-    Select distinct strategies based on issue type.
+    Return the strategies registered for the
+    customer's current support domain.
     """
 
-    issue = (issue_type or "").upper()
+    return get_strategies_for_domain(domain)
 
-    if "REFUND" in issue:
-        return [
-            (
-                "DIRECT_REFUND",
-                strategy_direct_refund,
-            ),
-            (
-                "TRANSACTION_RECONCILIATION",
-                strategy_recover_transaction,
-            ),
-            (
-                "RETURNLESS_ELIGIBILITY",
-                strategy_returnless_resolution,
-            ),
-        ]
-    # ---------------------------------------------------------
-    # These will be implemented next.
-    # Do NOT execute refund strategies for other domains.
-    # ---------------------------------------------------------
-    return []
 
-def resolution_controller(state) -> dict[str, Any]:
+def resolution_controller(
+    state,
+) -> dict[str, Any]:
     """
     Execute the next unused resolution strategy.
 
-    Maximum of MAX_STRATEGIES distinct strategies are allowed.
+    Strategies are selected dynamically from the
+    customer's routed domain.
+
+    Maximum of MAX_STRATEGIES distinct strategies
+    are allowed.
     """
 
-    issue_type = state.get("issue_type", "")
+    domain = state.get("domain")
+
+    if not domain:
+        return {
+            "resolution_success": False,
+            "resolution_failure_reason": (
+                "A support domain is required before "
+                "resolution can begin."
+            ),
+            "status": "HUMAN_ESCALATION",
+        }
 
     attempted = list(
-        state.get("attempted_strategies", [])
+        state.get(
+            "attempted_strategies",
+            [],
+        )
     )
 
     attempts = list(
-        state.get("resolution_attempts", [])
+        state.get(
+            "resolution_attempts",
+            [],
+        )
     )
 
-    strategies = get_strategies(issue_type)
+    try:
+        strategies = get_strategies_for_domain(
+            domain
+        )
+    except ValueError as exc:
+        return {
+            "resolution_success": False,
+            "resolution_failure_reason": str(exc),
+            "status": "HUMAN_ESCALATION",
+        }
 
-    # ---------------------------------------------------------
-    # Find the next unused strategy
-    # ---------------------------------------------------------
+    # --------------------------------------------------
+    # Enforce maximum of three distinct strategies
+    # --------------------------------------------------
+
+    if len(attempted) >= MAX_STRATEGIES:
+        return {
+            "resolution_success": False,
+            "resolution_failure_reason": (
+                "The maximum number of distinct "
+                "resolution strategies has been attempted."
+            ),
+            "status": "HUMAN_ESCALATION",
+        }
+
+    # --------------------------------------------------
+    # Find next unused strategy
+    # --------------------------------------------------
 
     next_strategy = None
-    strategy_function = None
 
-    for strategy_name, function in strategies:
+    for strategy_definition in strategies:
+        strategy_name = strategy_definition["name"]
 
         if strategy_name not in attempted:
-
             next_strategy = strategy_name
-            strategy_function = function
             break
 
-    # ---------------------------------------------------------
+    # --------------------------------------------------
     # No strategies remaining
-    # ---------------------------------------------------------
+    # --------------------------------------------------
 
     if next_strategy is None:
-
         return {
             "resolution_success": False,
             "resolution_failure_reason": (
@@ -348,25 +155,18 @@ def resolution_controller(state) -> dict[str, Any]:
             "status": "HUMAN_ESCALATION",
         }
 
-    # ---------------------------------------------------------
-    # Execute strategy
-    # ---------------------------------------------------------
+    # --------------------------------------------------
+    # Execute selected strategy
+    # --------------------------------------------------
 
-    try:
+    result = execute_strategy(
+        next_strategy,
+        state,
+    )
 
-        result = strategy_function(state)
-
-    except Exception as exc:
-
-        result = {
-            "success": False,
-            "error_code": "STRATEGY_EXECUTION_ERROR",
-            "message": str(exc),
-        }
-
-    # ---------------------------------------------------------
+    # --------------------------------------------------
     # Record attempt
-    # ---------------------------------------------------------
+    # --------------------------------------------------
 
     new_attempts, new_attempted = _record_attempt(
         state=state,
@@ -376,7 +176,10 @@ def resolution_controller(state) -> dict[str, Any]:
     )
 
     success = bool(
-        result.get("success", False)
+        result.get(
+            "success",
+            False,
+        )
     )
 
     updates = {
@@ -386,19 +189,21 @@ def resolution_controller(state) -> dict[str, Any]:
         "resolution_result": result,
     }
 
-    # ---------------------------------------------------------
-    # Strategy itself failed
-    # ---------------------------------------------------------
+    # --------------------------------------------------
+    # Strategy failed
+    # --------------------------------------------------
 
     if not success:
-
         updates.update(
             {
                 "resolution_success": False,
                 "resolution_failure_reason": (
                     result.get(
                         "message",
-                        "Resolution strategy failed.",
+                        result.get(
+                            "error",
+                            "Resolution strategy failed.",
+                        ),
                     )
                 ),
                 "status": "RESOLUTION_STRATEGY_FAILED",
@@ -407,19 +212,62 @@ def resolution_controller(state) -> dict[str, Any]:
 
         return updates
 
-    # ---------------------------------------------------------
+    # --------------------------------------------------
     # Strategy succeeded technically.
     #
     # IMPORTANT:
-    # We still validate the actual business outcome.
-    # ---------------------------------------------------------
+    # The validation node still determines whether
+    # the actual business outcome was achieved.
+    # --------------------------------------------------
 
     updates.update(
         {
             "resolution_success": False,
+            "action_ready": False,
             "resolution_failure_reason": "",
             "status": "RESOLUTION_PENDING_VALIDATION",
         }
     )
 
     return updates
+
+# ---------------------------------------------------------
+# Backward-compatible refund strategy wrappers
+# ---------------------------------------------------------
+
+def strategy_direct_refund(state) -> dict[str, Any]:
+    """
+    Backward-compatible wrapper for the legacy refund strategy.
+
+    The actual strategy execution is now handled by the
+    strategy executor registry.
+    """
+    return execute_strategy(
+        "REFUND_STATUS_CHECK",
+        state,
+    )
+
+
+def strategy_recover_transaction(state) -> dict[str, Any]:
+    """
+    Backward-compatible wrapper for the legacy transaction
+    reconciliation strategy.
+    """
+    return execute_strategy(
+        "REFUND_TRANSACTION_RECONCILIATION",
+        state,
+    )
+
+
+def strategy_returnless_resolution(state) -> dict[str, Any]:
+    """
+    Backward-compatible wrapper for the legacy returnless
+    resolution strategy.
+
+    Returnless handling is now represented by the dynamic
+    refund eligibility strategy.
+    """
+    return execute_strategy(
+        "REFUND_ELIGIBILITY_REVIEW",
+        state,
+    )

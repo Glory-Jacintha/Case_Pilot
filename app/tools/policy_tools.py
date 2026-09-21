@@ -2,14 +2,18 @@ from __future__ import annotations
 
 from langchain.tools import tool
 
-from .data_store import DataStoreError, amazon_policy, casepilot_policy
+from .s3_policy_store import S3PolicyError, get_policy
 
 
 @tool
 def get_amazon_policy(policy_area: str) -> dict:
-    """Retrieve publicly documented Amazon policy guidance for a policy area such as returns, refunds, delivery_claims, non_returnable, returnless_resolution, or a_to_z_guarantee."""
+    """
+    Retrieve publicly documented Amazon policy guidance for a
+    specific policy area.
+    """
+
     try:
-        policy = amazon_policy()
+        policy = get_policy("amazon_policy.json")
         key = str(policy_area).strip()
 
         if key not in policy:
@@ -17,6 +21,7 @@ def get_amazon_policy(policy_area: str) -> dict:
                 k for k in policy.keys()
                 if k not in {"title", "source_scope"}
             ]
+
             return {
                 "success": False,
                 "error": f"Unknown policy area '{key}'.",
@@ -29,15 +34,24 @@ def get_amazon_policy(policy_area: str) -> dict:
             "policy": policy[key],
             "source_scope": policy.get("source_scope"),
         }
-    except DataStoreError as exc:
-        return {"success": False, "error": str(exc)}
+
+    except S3PolicyError as exc:
+        return {
+            "success": False,
+            "error": str(exc),
+        }
 
 
 @tool
 def get_casepilot_policy(rule: str) -> dict:
-    """Retrieve a CasePilot authorization rule such as autonomous_transaction_limit_inr, max_distinct_strategies, success_rule, failure_rule, or escalation_rule."""
+    """
+    Retrieve a CasePilot business rule such as
+    autonomous_transaction_limit_inr, max_distinct_strategies,
+    success_rule, failure_rule, or escalation_rule.
+    """
+
     try:
-        policy = casepilot_policy()
+        policy = get_policy("casepilot_policy.json")
         key = str(rule).strip()
 
         if key not in policy:
@@ -52,5 +66,9 @@ def get_casepilot_policy(rule: str) -> dict:
             "rule": key,
             "value": policy[key],
         }
-    except DataStoreError as exc:
-        return {"success": False, "error": str(exc)}
+
+    except S3PolicyError as exc:
+        return {
+            "success": False,
+            "error": str(exc),
+        }

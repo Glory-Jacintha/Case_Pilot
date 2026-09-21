@@ -39,10 +39,14 @@ class CaseState(TypedDict, total=False):
     customer_id: str
 
     order_id: str
-
+    product_id: str
     domain: str
 
     issue_type: str
+
+    domain_confidence: float
+    routing_reason: str
+    reroute_count: int
 
     # =================================================
     # Investigation
@@ -63,6 +67,22 @@ class CaseState(TypedDict, total=False):
 
     requires_human: bool
 
+     # =================================================
+    # Action
+    # =================================================
+
+    action_required: bool
+    action_ready: bool
+    action_type: str
+
+    action_reason: str
+
+    action_result: dict
+
+    action_authorized: bool
+
+    human_approval: str
+    
     # =================================================
     # Resolution
     # =================================================

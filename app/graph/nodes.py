@@ -24,6 +24,42 @@ def _extract_text(content) -> str:
     return str(content)
 
 
+def _extract_order_id(text: str) -> str | None:
+    """Extract an order ID such as ORD0000001."""
+
+    match = re.search(
+        r"\bORD\d{7,}\b",
+        text,
+        re.IGNORECASE,
+    )
+
+    return match.group(0).upper() if match else None
+
+
+def _extract_customer_id(text: str) -> str | None:
+    """Extract a customer ID such as CUST0000001."""
+
+    match = re.search(
+        r"\bCUST\d{7,}\b",
+        text,
+        re.IGNORECASE,
+    )
+
+    return match.group(0).upper() if match else None
+
+
+def _extract_product_id(text: str) -> str | None:
+    """Extract a product ID such as PROD0000001."""
+
+    match = re.search(
+        r"\bPROD\d{7,}\b",
+        text,
+        re.IGNORECASE,
+    )
+
+    return match.group(0).upper() if match else None
+
+
 def investigate_case(state: CaseState) -> CaseState:
     """
     Investigate the customer issue while preserving
@@ -83,7 +119,7 @@ def investigate_case(state: CaseState) -> CaseState:
     )
 
     # -------------------------------------------------
-    # Extract transaction amount temporarily
+    # Extract transaction amount
     # -------------------------------------------------
 
     amount_match = re.search(
@@ -92,10 +128,48 @@ def investigate_case(state: CaseState) -> CaseState:
         re.IGNORECASE,
     )
 
+    # -------------------------------------------------
+    # Initial state updates
+    # -------------------------------------------------
+
     updates: CaseState = {
         "investigation": investigation_text,
         "status": "INVESTIGATION_COMPLETED",
     }
+
+    # -------------------------------------------------
+    # Extract identifiers
+    #
+    # Search both the original customer message and
+    # the investigation result.
+    # -------------------------------------------------
+
+    combined_text = (
+        customer_message
+        + "\n"
+        + investigation_text
+    )
+
+    order_id = _extract_order_id(
+        combined_text
+    )
+
+    customer_id = _extract_customer_id(
+        combined_text
+    )
+
+    product_id = _extract_product_id(
+        combined_text
+    )
+
+    if order_id:
+        updates["order_id"] = order_id
+
+    if customer_id:
+        updates["customer_id"] = customer_id
+
+    if product_id:
+        updates["product_id"] = product_id
 
     if amount_match:
         updates["transaction_amount"] = float(
@@ -103,7 +177,7 @@ def investigate_case(state: CaseState) -> CaseState:
         )
 
     # -------------------------------------------------
-    # Save assistant response to conversation
+    # Preserve conversation history
     # -------------------------------------------------
 
     updates["conversation_history"] = [
@@ -127,9 +201,14 @@ def authorization_gate(state: CaseState) -> CaseState:
     we do NOT authorize a transaction.
     """
 
-    amount = state.get("transaction_amount")
+    amount = state.get(
+        "transaction_amount"
+    )
 
-    # We don't know the transaction amount yet.
+    # -------------------------------------------------
+    # Transaction amount is unknown
+    # -------------------------------------------------
+
     if amount is None:
         return {
             "status": "AWAITING_TRANSACTION_INFORMATION",
@@ -138,12 +217,20 @@ def authorization_gate(state: CaseState) -> CaseState:
 
     amount = float(amount)
 
+    # -------------------------------------------------
+    # Human approval threshold
+    # -------------------------------------------------
+
     if amount >= HUMAN_APPROVAL_THRESHOLD:
         return {
             "authorization": "HUMAN_REQUIRED",
             "requires_human": True,
             "status": "WAITING_FOR_HUMAN_APPROVAL",
         }
+
+    # -------------------------------------------------
+    # AI allowed
+    # -------------------------------------------------
 
     return {
         "authorization": "AI_ALLOWED",
