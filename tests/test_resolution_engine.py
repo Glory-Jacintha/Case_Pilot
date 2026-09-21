@@ -1,9 +1,5 @@
-from app.graph.resolution import (
-    get_strategies,
-    strategy_direct_refund,
-    strategy_recover_transaction,
-    strategy_returnless_resolution,
-)
+from app.graph.resolution import get_strategies
+from app.graph.strategy_executors import STRATEGY_EXECUTORS
 
 
 def test_refund_has_three_distinct_strategies():
@@ -11,8 +7,8 @@ def test_refund_has_three_distinct_strategies():
     strategies = get_strategies("REFUND")
 
     names = [
-        name
-        for name, _ in strategies
+        strategy["name"]
+        for strategy in strategies
     ]
 
     assert len(names) == 3
@@ -20,54 +16,66 @@ def test_refund_has_three_distinct_strategies():
     assert len(set(names)) == 3
 
     assert names == [
-        "DIRECT_REFUND",
-        "TRANSACTION_RECONCILIATION",
-        "RETURNLESS_ELIGIBILITY",
+        "REFUND_STATUS_CHECK",
+        "REFUND_TRANSACTION_RECONCILIATION",
+        "REFUND_ELIGIBILITY_REVIEW",
     ]
 
 
-def test_non_refund_does_not_use_refund_strategies():
+def test_all_supported_domains_have_three_strategies():
 
-    strategies = get_strategies("DELIVERY")
+    expected_domains = [
+        "ORDER",
+        "PAYMENT",
+        "DELIVERY",
+        "REFUND",
+        "RETURN",
+        "CANCELLATION",
+        "PRODUCT_QUERY",
+    ]
 
-    assert strategies == []
+    for domain in expected_domains:
 
+        strategies = get_strategies(domain)
 
-def test_direct_refund_requires_order():
+        assert len(strategies) == 3
 
-    result = strategy_direct_refund(
-        {
-            "transaction_amount": 1999.0,
-        }
-    )
+        names = [
+            strategy["name"]
+            for strategy in strategies
+        ]
 
-    assert result["success"] is False
-    assert result["error_code"] == "ORDER_ID_MISSING"
-
-
-def test_direct_refund_requires_amount():
-
-    result = strategy_direct_refund(
-        {
-            "order_id": "ORD0000001",
-        }
-    )
-
-    assert result["success"] is False
-    assert result["error_code"] == "AMOUNT_MISSING"
+        assert len(set(names)) == 3
 
 
-def test_transaction_reconciliation_requires_order():
+def test_all_registered_strategies_have_executors():
 
-    result = strategy_recover_transaction({})
+    for domain in [
+        "ORDER",
+        "PAYMENT",
+        "DELIVERY",
+        "REFUND",
+        "RETURN",
+        "CANCELLATION",
+        "PRODUCT_QUERY",
+    ]:
 
-    assert result["success"] is False
-    assert result["error_code"] == "ORDER_ID_MISSING"
+        strategies = get_strategies(domain)
+
+        for strategy in strategies:
+
+            assert strategy["name"] in (
+                STRATEGY_EXECUTORS
+            )
 
 
-def test_returnless_requires_order():
+def test_invalid_domain_is_rejected():
 
-    result = strategy_returnless_resolution({})
-
-    assert result["success"] is False
-    assert result["error_code"] == "ORDER_ID_MISSING"
+    try:
+        get_strategies("INVALID_DOMAIN")
+    except ValueError as exc:
+        assert "Unsupported CasePilot domain" in str(exc)
+    else:
+        raise AssertionError(
+            "Expected ValueError for invalid domain."
+        )

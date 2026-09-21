@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.tools.data_store import (
-    find_one,
-    orders,
-    payments,
-    refunds,
-    deliveries,
-    returns,
-    products,
+from app.tools.read_tools import (
+    get_order_details,
+    get_payment_details,
+    get_delivery_details,
+    get_return_details,
+    get_refund_details,
+    get_product_details,
 )
 
 
@@ -49,31 +48,27 @@ def _validate_order(
             "Order ID is required to validate the order resolution."
         )
 
-    order = find_one(
-        orders(),
-        "OrderID",
-        order_id,
+    result = get_order_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not order:
+    if not result.get("success"):
         return _failure(
-            f"Order {order_id} could not be found during validation."
+            result.get(
+                "message",
+                f"Order {order_id} could not be found during validation.",
+            )
         )
+
+    order = result.get("order", {})
 
     return _success(
         {
             "operation": "ORDER_INFORMATION_VALIDATED",
-            "order_id": order_id,
-            "order_status": order.get(
-                "OrderStatus",
-                "",
-            ),
+            "order_id": order.get("order_id", order_id),
+            "order_status": order.get("order_status", ""),
             "amount": float(
-                order.get(
-                    "TotalAmount",
-                    0,
-                )
-                or 0
+                order.get("total_amount", 0) or 0
             ),
         }
     )
@@ -94,36 +89,29 @@ def _validate_payment(
             "Order ID is required to validate the payment."
         )
 
-    payment = find_one(
-        payments(),
-        "OrderID",
-        order_id,
+    result = get_payment_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not payment:
+    if not result.get("success"):
         return _failure(
-            f"Payment information for order {order_id} "
-            "could not be found."
+            result.get(
+                "message",
+                f"Payment information for order {order_id} "
+                "could not be found.",
+            )
         )
+
+    payment = result.get("payment", {})
 
     return _success(
         {
             "operation": "PAYMENT_INFORMATION_VALIDATED",
-            "order_id": order_id,
-            "transaction_id": payment.get(
-                "TransactionID",
-                "",
-            ),
-            "payment_status": payment.get(
-                "PaymentStatus",
-                "",
-            ),
+            "order_id": payment.get("order_id", order_id),
+            "transaction_id": payment.get("transaction_id", ""),
+            "payment_status": payment.get("payment_status", ""),
             "amount": float(
-                payment.get(
-                    "Amount",
-                    0,
-                )
-                or 0
+                payment.get("amount", 0) or 0
             ),
         }
     )
@@ -144,32 +132,35 @@ def _validate_delivery(
             "Order ID is required to validate the delivery."
         )
 
-    delivery = find_one(
-        deliveries(),
-        "OrderID",
-        order_id,
+    result = get_delivery_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not delivery:
+    if not result.get("success"):
         return _failure(
-            f"Delivery information for order {order_id} "
-            "could not be found."
+            result.get(
+                "message",
+                f"Delivery information for order {order_id} "
+                "could not be found.",
+            )
         )
+
+    delivery = result.get("delivery", {})
 
     return _success(
         {
             "operation": "DELIVERY_INFORMATION_VALIDATED",
-            "order_id": order_id,
+            "order_id": delivery.get("order_id", order_id),
             "delivery_status": delivery.get(
-                "DeliveryStatus",
+                "delivery_status",
                 "",
             ),
             "tracking_id": delivery.get(
-                "TrackingID",
+                "tracking_id",
                 "",
             ),
             "courier": delivery.get(
-                "Courier",
+                "courier",
                 "",
             ),
         }
@@ -185,10 +176,7 @@ def _customer_waiting_for_refund(
 ) -> bool:
 
     message = str(
-        state.get(
-            "customer_message",
-            "",
-        )
+        state.get("customer_message", "")
     ).lower()
 
     waiting_phrases = (
@@ -230,80 +218,72 @@ def _validate_refund(
     # 1. Verify order
     # --------------------------------------------------------
 
-    order = find_one(
-        orders(),
-        "OrderID",
-        order_id,
+    order_result = get_order_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not order:
+    if not order_result.get("success"):
         return _failure(
-            f"Order {order_id} could not be found during "
-            "refund validation."
+            order_result.get(
+                "message",
+                f"Order {order_id} could not be found during "
+                "refund validation.",
+            )
         )
 
     # --------------------------------------------------------
     # 2. Verify payment
     # --------------------------------------------------------
 
-    payment = find_one(
-        payments(),
-        "OrderID",
-        order_id,
+    payment_result = get_payment_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not payment:
+    if not payment_result.get("success"):
         return _failure(
             "Payment information could not be verified "
             "during refund validation."
         )
 
+    payment = payment_result.get("payment", {})
+
     payment_status = str(
-        payment.get(
-            "PaymentStatus",
-            "",
-        )
+        payment.get("payment_status", "")
     ).upper()
 
-    # A refund should only proceed when the original payment
-    # was successfully completed.
     if payment_status != "SUCCESS":
         return _failure(
             f"Payment for order {order_id} is not successful."
         )
 
     # --------------------------------------------------------
-    # 3. Look for an existing refund
+    # 3. Look for existing refund
     # --------------------------------------------------------
 
-    refund = find_one(
-        refunds(),
-        "OrderID",
-        order_id,
+    refund_result = get_refund_details.invoke(
+        {"order_id": str(order_id)}
+    )
+
+    refund_exists = refund_result.get(
+        "refund_exists",
+        False,
+    )
+
+    refund = (
+        refund_result.get("refund", {})
+        if refund_exists
+        else {}
     )
 
     current_strategy = str(
-        state.get(
-            "current_strategy",
-            "",
-        )
+        state.get("current_strategy", "")
     ).upper()
 
     # --------------------------------------------------------
-    # 4. PRE-ACTION ELIGIBILITY PHASE
-    # --------------------------------------------------------
-    #
-    # If there is no refund record yet, that does NOT
-    # automatically mean the case has failed.
-    #
-    # Specifically, after REFUND_ELIGIBILITY_REVIEW,
-    # the system can determine that the refund is eligible
-    # and mark the state as ACTION_READY.
-    #
-    # The action controller will then create the refund.
+    # 4. Pre-action eligibility
     # --------------------------------------------------------
 
-    if not refund:
+    if not refund_exists:
 
         if current_strategy == "REFUND_ELIGIBILITY_REVIEW":
 
@@ -330,27 +310,20 @@ def _validate_refund(
     # --------------------------------------------------------
 
     refund_status = str(
-        refund.get(
-            "RefundStatus",
-            "",
-        )
+        refund.get("refund_status", "")
     ).upper()
+
+    refund_id = refund.get(
+        "refund_id",
+        "",
+    )
 
     customer_waiting = _customer_waiting_for_refund(
         state
     )
 
     # --------------------------------------------------------
-    # 6. Customer is waiting for an already-created refund
-    # --------------------------------------------------------
-    #
-    # PROCESSING is NOT enough here.
-    #
-    # Example:
-    # "I haven't received my refund."
-    #
-    # If refund is still PROCESSING, the customer's issue
-    # has not actually been resolved.
+    # 6. Customer waiting for existing refund
     # --------------------------------------------------------
 
     if customer_waiting:
@@ -358,23 +331,14 @@ def _validate_refund(
         if refund_status != "COMPLETED":
 
             return _failure(
-                f"Refund {refund.get('RefundID', '')} "
-                f"is currently {refund_status}. "
+                f"Refund {refund_id} is currently "
+                f"{refund_status}. "
                 "The customer's refund has not yet reached "
                 "a resolved state."
             )
 
     # --------------------------------------------------------
-    # 7. Customer is requesting a new refund
-    # --------------------------------------------------------
-    #
-    # Example:
-    # "I want a refund for this order."
-    #
-    # If the refund action successfully creates a PROCESSING
-    # refund, the requested transaction has been initiated.
-    # Therefore PROCESSING can be considered resolved for
-    # this type of request.
+    # 7. Customer requesting a new refund
     # --------------------------------------------------------
 
     else:
@@ -385,8 +349,8 @@ def _validate_refund(
         }:
 
             return _failure(
-                f"Refund {refund.get('RefundID', '')} "
-                f"is currently {refund_status}. "
+                f"Refund {refund_id} is currently "
+                f"{refund_status}. "
                 "The refund has not reached a resolved state."
             )
 
@@ -398,17 +362,10 @@ def _validate_refund(
         {
             "operation": "REFUND_VALIDATED",
             "order_id": order_id,
-            "refund_id": refund.get(
-                "RefundID",
-                "",
-            ),
+            "refund_id": refund_id,
             "refund_status": refund_status,
             "amount": float(
-                refund.get(
-                    "RefundAmount",
-                    0,
-                )
-                or 0
+                refund.get("refund_amount", 0) or 0
             ),
         }
     )
@@ -429,31 +386,43 @@ def _validate_return(
             "Order ID is required to validate the return."
         )
 
-    return_record = find_one(
-        returns(),
-        "OrderID",
-        order_id,
+    result = get_return_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not return_record:
+    if not result.get("success"):
+        return _failure(
+            result.get(
+                "message",
+                f"Return information for order {order_id} "
+                "could not be retrieved.",
+            )
+        )
+
+    if not result.get("return_exists"):
         return _failure(
             f"No return record exists for order {order_id}."
         )
+
+    return_record = result.get(
+        "return",
+        {},
+    )
 
     return _success(
         {
             "operation": "RETURN_INFORMATION_VALIDATED",
             "order_id": order_id,
             "return_id": return_record.get(
-                "ReturnID",
+                "return_id",
                 "",
             ),
             "return_status": return_record.get(
-                "ReturnStatus",
+                "return_status",
                 "",
             ),
             "return_reason": return_record.get(
-                "ReturnReason",
+                "return_reason",
                 "",
             ),
         }
@@ -475,27 +444,24 @@ def _validate_cancellation(
             "Order ID is required to validate cancellation."
         )
 
-    order = find_one(
-        orders(),
-        "OrderID",
-        order_id,
+    result = get_order_details.invoke(
+        {"order_id": str(order_id)}
     )
 
-    if not order:
+    if not result.get("success"):
         return _failure(
-            f"Order {order_id} could not be found."
+            result.get(
+                "message",
+                f"Order {order_id} could not be found.",
+            )
         )
+
+    order = result.get("order", {})
 
     order_status = str(
-        order.get(
-            "OrderStatus",
-            "",
-        )
+        order.get("order_status", "")
     ).upper()
 
-    # Cancellation is currently investigation-only.
-    # We validate the actual order state rather than
-    # pretending that a cancellation transaction occurred.
     return _success(
         {
             "operation": "CANCELLATION_STATUS_VALIDATED",
@@ -516,41 +482,71 @@ def _validate_product_query(
     product_id = state.get("product_id")
 
     if not product_id:
-        return _failure(
-            "Product ID is required to validate the "
-            "product information."
+
+        order_id = state.get("order_id")
+
+        if not order_id:
+            return _failure(
+                "Product ID is required to validate the "
+                "product information."
+            )
+
+        order_result = get_order_details.invoke(
+            {"order_id": str(order_id)}
         )
 
-    product = find_one(
-        products(),
-        "ProductID",
-        product_id,
+        if not order_result.get("success"):
+            return _failure(
+                "Product information could not be determined "
+                "from the order."
+            )
+
+        product_id = order_result.get(
+            "order",
+            {},
+        ).get("product_id")
+
+    if not product_id:
+        return _failure(
+            "Product ID could not be determined."
+        )
+
+    result = get_product_details.invoke(
+        {"product_id": str(product_id)}
     )
 
-    if not product:
+    if not result.get("success"):
         return _failure(
-            f"Product {product_id} could not be found."
+            result.get(
+                "message",
+                f"Product {product_id} could not be found.",
+            )
         )
+
+    product = result.get("product", {})
 
     return _success(
         {
             "operation": "PRODUCT_INFORMATION_VALIDATED",
-            "product_id": product_id,
+            "product_id": product.get(
+                "product_id",
+                product_id,
+            ),
             "product_name": product.get(
-                "ProductName",
+                "product_name",
                 "",
             ),
             "category": product.get(
-                "Category",
+                "category",
                 "",
             ),
             "brand": product.get(
-                "Brand",
+                "brand",
                 "",
             ),
             "return_eligible": product.get(
-                "ReturnEligible",
-                "",
+                "return_eligible",
+                False,
             ),
         }
     )
@@ -565,26 +561,13 @@ def validate_resolution(
 ) -> dict[str, Any]:
 
     domain = str(
-        state.get(
-            "domain"
-        )
-        or state.get(
-            "issue_type"
-        )
+        state.get("domain")
+        or state.get("issue_type")
         or ""
     ).upper()
 
     # --------------------------------------------------------
-    # If the resolution strategy itself explicitly failed,
-    # validation must respect that failure.
-    #
-    # Example:
-    # {
-    #     "resolution_result": {
-    #         "success": False,
-    #         "error_code": "TRACKING_UNAVAILABLE"
-    #     }
-    # }
+    # Respect explicit strategy failure
     # --------------------------------------------------------
 
     resolution_result = state.get(
@@ -596,7 +579,6 @@ def validate_resolution(
         isinstance(resolution_result, dict)
         and resolution_result.get("success") is False
     ):
-
         return _failure(
             resolution_result.get(
                 "message",
@@ -608,9 +590,7 @@ def validate_resolution(
         )
 
     # --------------------------------------------------------
-    # If an action was attempted and failed, validation must
-    # also respect that failure instead of looking at stale
-    # investigation data.
+    # Respect action failure
     # --------------------------------------------------------
 
     action_result = state.get(
@@ -621,12 +601,8 @@ def validate_resolution(
     if (
         isinstance(action_result, dict)
         and action_result
-        and not action_result.get(
-            "success",
-            False,
-        )
+        and not action_result.get("success", False)
     ):
-
         return _failure(
             action_result.get(
                 "message",
@@ -638,7 +614,7 @@ def validate_resolution(
         )
 
     # --------------------------------------------------------
-    # Select validator based on domain
+    # Select validator
     # --------------------------------------------------------
 
     validators = {

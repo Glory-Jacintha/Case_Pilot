@@ -1,12 +1,9 @@
-from app.graph.resolution import (
-    resolution_controller,
-)
+from app.graph.resolution import resolution_controller
 
 
 def test_controller_starts_with_first_unused_strategy():
-
     state = {
-        "issue_type": "REFUND",
+        "domain": "REFUND",
         "order_id": "ORD0000001",
         "transaction_amount": 1999.0,
         "attempted_strategies": [],
@@ -19,11 +16,11 @@ def test_controller_starts_with_first_unused_strategy():
     print(result)
 
     assert result["current_strategy"] == (
-        "DIRECT_REFUND"
+        "REFUND_STATUS_CHECK"
     )
 
     assert result["attempted_strategies"] == [
-        "DIRECT_REFUND"
+        "REFUND_STATUS_CHECK"
     ]
 
     assert len(
@@ -32,13 +29,12 @@ def test_controller_starts_with_first_unused_strategy():
 
 
 def test_controller_skips_already_attempted_strategy():
-
     state = {
-        "issue_type": "REFUND",
+        "domain": "REFUND",
         "order_id": "ORD0000001",
         "transaction_amount": 1999.0,
         "attempted_strategies": [
-            "DIRECT_REFUND"
+            "REFUND_STATUS_CHECK"
         ],
         "resolution_attempts": [],
     }
@@ -49,24 +45,23 @@ def test_controller_skips_already_attempted_strategy():
     print(result)
 
     assert result["current_strategy"] == (
-        "TRANSACTION_RECONCILIATION"
+        "REFUND_TRANSACTION_RECONCILIATION"
     )
 
     assert result["attempted_strategies"] == [
-        "DIRECT_REFUND",
-        "TRANSACTION_RECONCILIATION",
+        "REFUND_STATUS_CHECK",
+        "REFUND_TRANSACTION_RECONCILIATION",
     ]
 
 
 def test_controller_selects_third_strategy_after_two_attempts():
-
     state = {
-        "issue_type": "REFUND",
+        "domain": "REFUND",
         "order_id": "ORD0000001",
         "transaction_amount": 1999.0,
         "attempted_strategies": [
-            "DIRECT_REFUND",
-            "TRANSACTION_RECONCILIATION",
+            "REFUND_STATUS_CHECK",
+            "REFUND_TRANSACTION_RECONCILIATION",
         ],
         "resolution_attempts": [],
     }
@@ -77,7 +72,7 @@ def test_controller_selects_third_strategy_after_two_attempts():
     print(result)
 
     assert result["current_strategy"] == (
-        "RETURNLESS_ELIGIBILITY"
+        "REFUND_ELIGIBILITY_REVIEW"
     )
 
     assert len(
@@ -86,15 +81,14 @@ def test_controller_selects_third_strategy_after_two_attempts():
 
 
 def test_controller_escalates_after_all_three_attempts():
-
     state = {
-        "issue_type": "REFUND",
+        "domain": "REFUND",
         "order_id": "ORD0000001",
         "transaction_amount": 1999.0,
         "attempted_strategies": [
-            "DIRECT_REFUND",
-            "TRANSACTION_RECONCILIATION",
-            "RETURNLESS_ELIGIBILITY",
+            "REFUND_STATUS_CHECK",
+            "REFUND_TRANSACTION_RECONCILIATION",
+            "REFUND_ELIGIBILITY_REVIEW",
         ],
         "resolution_attempts": [],
     }
@@ -111,6 +105,6 @@ def test_controller_escalates_after_all_three_attempts():
     )
 
     assert (
-        "All available resolution strategies"
+        "maximum number of distinct"
         in result["resolution_failure_reason"]
     )

@@ -613,7 +613,6 @@ def migrate_case_history(cur):
             reason_or_next_step
         )
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (case_id) DO NOTHING
     """
 
     insert_batches(

@@ -216,7 +216,7 @@ def create_schema():
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS case_history_examples (
                     id BIGSERIAL PRIMARY KEY,
-                    case_id VARCHAR(...) NOT NULL,
+                    case_id VARCHAR(100) NOT NULL,
                     scenario TEXT,
                     domain TEXT,
                     case_description TEXT,
