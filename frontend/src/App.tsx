@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import AgentApp from "./agent/AgentApp";
 
 type Message = {
   id: string;
@@ -12,6 +13,16 @@ type Conversation = {
   title: string;
   messages: Message[];
 };
+
+type ChatResponse = {
+  message: string;
+  transaction_amount?: number | null;
+  authorization?: string | null;
+  requires_human?: boolean;
+  status?: string;
+};
+
+const API_BASE_URL = "http://127.0.0.1:8000";
 
 const createMessage = (
   role: "user" | "assistant",
@@ -34,24 +45,38 @@ const createConversation = (): Conversation => ({
 });
 
 function App() {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    createConversation(),
-  ]);
+  const isAgent =
+    new URLSearchParams(window.location.search).get("mode") ===
+    "agent";
 
-  const [activeConversationId, setActiveConversationId] = useState(
-    conversations[0].id,
-  );
+  if (isAgent) {
+    return <AgentApp />;
+  }
+
+  return <CustomerApp />;
+}
+
+function CustomerApp() {
+  const [conversations, setConversations] = useState<
+    Conversation[]
+  >([createConversation()]);
+
+  const [activeConversationId, setActiveConversationId] =
+    useState(conversations[0].id);
 
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef =
+    useRef<HTMLDivElement | null>(null);
 
   const activeConversation = conversations.find(
-    (conversation) => conversation.id === activeConversationId,
+    (conversation) =>
+      conversation.id === activeConversationId,
   );
 
-  const messages = activeConversation?.messages ?? [];
+  const messages =
+    activeConversation?.messages ?? [];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -59,24 +84,60 @@ function App() {
     });
   }, [messages, isTyping]);
 
+  const appendAssistantMessage = (
+    conversationId: string,
+    content: string,
+  ) => {
+    setConversations((current) =>
+      current.map((conversation) => {
+        if (
+          conversation.id !== conversationId
+        ) {
+          return conversation;
+        }
+
+        return {
+          ...conversation,
+          messages: [
+            ...conversation.messages,
+            createMessage(
+              "assistant",
+              content,
+            ),
+          ],
+        };
+      }),
+    );
+  };
+
   const handleNewChat = () => {
-    const newConversation = createConversation();
+    const newConversation =
+      createConversation();
 
     setConversations((current) => [
       newConversation,
       ...current,
     ]);
 
-    setActiveConversationId(newConversation.id);
+    setActiveConversationId(
+      newConversation.id,
+    );
     setInput("");
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const message = input.trim();
 
-    if (!message || isTyping || !activeConversation) {
+    if (
+      !message ||
+      isTyping ||
+      !activeConversation
+    ) {
       return;
     }
+
+    const conversationId =
+      activeConversation.id;
 
     const userMessage = createMessage(
       "user",
@@ -86,7 +147,8 @@ function App() {
     setConversations((current) =>
       current.map((conversation) => {
         if (
-          conversation.id !== activeConversationId
+          conversation.id !==
+          conversationId
         ) {
           return conversation;
         }
@@ -114,34 +176,53 @@ function App() {
     setInput("");
     setIsTyping(true);
 
-    // Temporary response.
-    // We will replace this with the FastAPI call next.
-    setTimeout(() => {
-      const assistantMessage = createMessage(
-        "assistant",
-        "I'm checking that for you. CasePilot will connect to the support system here.",
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            session_id: conversationId,
+            customer_message: message,
+          }),
+        },
       );
 
-      setConversations((current) =>
-        current.map((conversation) => {
-          if (
-            conversation.id !== activeConversationId
-          ) {
-            return conversation;
-          }
+      if (!response.ok) {
+        const errorText =
+          await response.text();
 
-          return {
-            ...conversation,
-            messages: [
-              ...conversation.messages,
-              assistantMessage,
-            ],
-          };
-        }),
+        throw new Error(
+          errorText ||
+          `Request failed with ${response.status}`,
+        );
+      }
+
+      const data =
+        (await response.json()) as ChatResponse;
+
+      appendAssistantMessage(
+        conversationId,
+        data.message ||
+        "CasePilot processed your request.",
+      );
+    } catch (error) {
+      console.error(
+        "CasePilot API error:",
+        error,
       );
 
+      appendAssistantMessage(
+        conversationId,
+        "I couldn't connect to CasePilot right now. Please make sure the FastAPI backend is running on port 8000 and try again.",
+      );
+    } finally {
       setIsTyping(false);
-    }, 900);
+    }
   };
 
   const handleKeyDown = (
@@ -152,23 +233,19 @@ function App() {
       !event.shiftKey
     ) {
       event.preventDefault();
-      handleSend();
+      void handleSend();
     }
   };
 
-  const handleSuggestion = (text: string) => {
+  const handleSuggestion = (
+    text: string,
+  ) => {
     setInput(text);
   };
 
   return (
     <div className="app-shell">
-
-      {/* ------------------------------------------------ */}
-      {/* Sidebar */}
-      {/* ------------------------------------------------ */}
-
       <aside className="sidebar">
-
         <div className="sidebar-header">
           <div className="brand">
             <div className="brand-icon">
@@ -194,70 +271,15 @@ function App() {
           <span className="plus-icon">
             +
           </span>
-
           New Chat
         </button>
 
-        <div className="capabilities-section">
-
-          <div className="capabilities-title">
-            What I can help with
-          </div>
-
-          <div className="capabilities-list">
-
-            <div className="capability-item">
-              <span className="capability-icon">📦</span>
-              <span>Orders</span>
-            </div>
-
-            <div className="capability-item">
-              <span className="capability-icon">💳</span>
-              <span>Payments</span>
-            </div>
-
-            <div className="capability-item">
-              <span className="capability-icon">🚚</span>
-              <span>Deliveries</span>
-            </div>
-
-            <div className="capability-item">
-              <span className="capability-icon">↩</span>
-              <span>Returns</span>
-            </div>
-
-            <div className="capability-item">
-              <span className="capability-icon">💰</span>
-              <span>Refunds</span>
-            </div>
-
-            <div className="capability-item">
-              <span className="capability-icon">✕</span>
-              <span>Cancellations</span>
-            </div>
-
-            <div className="capability-item">
-              <span className="capability-icon">🔎</span>
-              <span>Product queries</span>
-            </div>
-
-          </div>
-
-          <div className="protection-note">
-            Your information is protected. Only the information
-            needed to investigate your case is used.
-          </div>
-
-        </div>
-
         <div className="history-section">
-
           <div className="history-title">
             CONVERSATIONS
           </div>
 
           <div className="conversation-list">
-
             {conversations.map(
               (conversation) => (
                 <button
@@ -274,7 +296,7 @@ function App() {
                   }
                 >
                   <span className="conversation-icon">
-                    ○
+                    ◦
                   </span>
 
                   <span className="conversation-title">
@@ -283,25 +305,69 @@ function App() {
                 </button>
               ),
             )}
+          </div>
+        </div>
 
+        {/* ------------------------------------------------ */}
+        {/* CasePilot Capabilities */}
+        {/* ------------------------------------------------ */}
+
+        <div className="capabilities-section">
+          <div className="capabilities-title">
+            CASEPILOT CAN HELP WITH
+          </div>
+
+          <div className="capabilities-list">
+            <div className="capability-item">
+              <span className="capability-icon">□</span>
+              <span>Orders</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">₹</span>
+              <span>Payments</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">⌁</span>
+              <span>Delivery</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">↩</span>
+              <span>Returns & Refunds</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">×</span>
+              <span>Cancellations</span>
+            </div>
+
+            <div className="capability-item">
+              <span className="capability-icon">◇</span>
+              <span>Product Questions</span>
+            </div>
           </div>
         </div>
 
         <div className="sidebar-footer">
           <div className="status-dot" />
-          <span>CasePilot is online</span>
+          <span>
+            CasePilot is online
+          </span>
         </div>
-
       </aside>
 
-      {/* ------------------------------------------------ */}
-      {/* Main Chat */}
-      {/* ------------------------------------------------ */}
-
       <main className="chat-area">
-
-        <header className="chat-header">
-
+        <header
+          className="chat-header"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
+        >
           <div>
             <div className="chat-header-title">
               Customer Support
@@ -313,16 +379,21 @@ function App() {
             </div>
           </div>
 
+          <a
+            href="?mode=agent"
+            className="agent-console-button"
+          >
+            <span>Agent Console</span>
+            <span className="agent-console-arrow">↗</span>
+          </a>
         </header>
 
         <section className="messages-container">
-
           {messages.map((message) => (
             <div
               key={message.id}
               className={`message-row ${message.role}`}
             >
-
               {message.role ===
                 "assistant" && (
                   <div className="avatar assistant-avatar">
@@ -331,8 +402,7 @@ function App() {
                 )}
 
               <div
-                className={`message-bubble ${message.role
-                  }`}
+                className={`message-bubble ${message.role}`}
               >
                 {message.content}
               </div>
@@ -343,13 +413,11 @@ function App() {
                     You
                   </div>
                 )}
-
             </div>
           ))}
 
           {isTyping && (
             <div className="message-row assistant">
-
               <div className="avatar assistant-avatar">
                 CP
               </div>
@@ -359,21 +427,14 @@ function App() {
                 <span />
                 <span />
               </div>
-
             </div>
           )}
 
           <div ref={messagesEndRef} />
-
         </section>
-
-        {/* ------------------------------------------------ */}
-        {/* Suggestions */}
-        {/* ------------------------------------------------ */}
 
         {messages.length <= 1 && (
           <div className="suggestions">
-
             <button
               onClick={() =>
                 handleSuggestion(
@@ -413,18 +474,11 @@ function App() {
             >
               ↩ Return an item
             </button>
-
           </div>
         )}
 
-        {/* ------------------------------------------------ */}
-        {/* Input */}
-        {/* ------------------------------------------------ */}
-
         <div className="input-area">
-
           <div className="input-wrapper">
-
             <textarea
               value={input}
               onChange={(event) =>
@@ -438,7 +492,9 @@ function App() {
 
             <button
               className="send-button"
-              onClick={handleSend}
+              onClick={() =>
+                void handleSend()
+              }
               disabled={
                 !input.trim() ||
                 isTyping
@@ -447,18 +503,14 @@ function App() {
             >
               ↑
             </button>
-
           </div>
 
           <div className="input-disclaimer">
             CasePilot can make mistakes. Please
             verify important information.
           </div>
-
         </div>
-
       </main>
-
     </div>
   );
 }

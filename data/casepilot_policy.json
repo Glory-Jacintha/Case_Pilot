@@ -1,16 +1,47 @@
 {
-  "autonomous_transaction_limit_inr": 2000,
-  "human_approval_rule": "Any financial transaction/refund amount >= INR 2000 requires human approval via LangGraph interrupt.",
-  "ai_resolution_rule": "For amounts below INR 2000, AI may attempt an eligible action if all applicable Amazon-policy checks and transaction checks pass.",
+  "policy_name": "CasePilot Autonomous Resolution Policy",
+  "policy_version": "2.1",
+  "currency_policy": {
+    "mode": "CURRENCY_SPECIFIC_THRESHOLD",
+    "description": "CasePilot uses currency-specific thresholds representing a higher-value consumer transaction for each supported currency. The thresholds are policy values and are not official legal or regulatory definitions.",
+    "human_approval_thresholds": {
+      "INR": 2000,
+      "USD": 140,
+      "EUR": 130,
+      "GBP": 110,
+      "AUD": 210,
+      "CAD": 190
+    },
+    "supported_currencies": [
+      "INR",
+      "USD",
+      "EUR",
+      "GBP",
+      "AUD",
+      "CAD"
+    ],
+    "missing_currency_action": "HUMAN_APPROVAL",
+    "unsupported_currency_action": "HUMAN_APPROVAL"
+  },
+  "human_approval_rule": "Any financial transaction at or above the configured human approval threshold for its transaction currency requires human approval via LangGraph interrupt before the financial action is executed.",
+  "ai_resolution_rule": "For financial transactions below the configured human approval threshold for the transaction currency, AI may execute an eligible financial action when all applicable policy checks, transaction checks, eligibility checks, and case-specific conditions pass.",
   "max_distinct_strategies": 3,
   "strategy_rule": "Each attempt must use a different, issue-appropriate approach that has not already been tried.",
   "success_rule": "A strategy is successful only after the intended business outcome is validated using system evidence. Stop immediately after validated success.",
-  "failure_rule": "Record the exact tool/system/business reason for failure before selecting another strategy.",
+  "failure_rule": "Record the exact tool, system, or business reason for failure before selecting another strategy.",
   "escalation_rule": "After three distinct unsuccessful strategies, interrupt and provide the human with evidence, attempts, exact failure reasons, and an AI recommendation.",
+  "human_approval_rejection_rule": "If human approval is rejected, do not execute the pending financial action. Record the rejection reason and return a response stating that the action was not executed.",
+  "human_approval_success_rule": "If human approval is granted, execute only the pending authorized action and validate the resulting business state before reporting success.",
   "safety_rules": [
     "Never invent transaction state.",
     "Never claim a refund succeeded without validation.",
+    "Never claim an action was executed when it was not executed.",
+    "Never execute a financial action requiring human approval before approval is granted.",
     "Never repeat a failed strategy unless new evidence materially changes the situation.",
-    "When transaction data conflicts or is uncertain, escalate."
+    "Never reuse an incompatible order, product, customer, return, payment, delivery, or refund identifier from an earlier case context.",
+    "When transaction data conflicts or is uncertain, escalate.",
+    "When transaction currency is missing or unsupported, require human approval.",
+    "Use the transaction currency stored in verified system data rather than inferring currency from the customer's message.",
+    "A validated business outcome is required before marking a case as successfully resolved."
   ]
 }
